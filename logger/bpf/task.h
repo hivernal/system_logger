@@ -6,7 +6,8 @@
 #define TASK_COMM_LEN 16
 #define PATH_SIZE 4096
 #define DENTRY_NAME_SIZE 256
-#define MAX_DENTRIES 128
+#define MAX_DENTRIES 12  // 128
+#define UTS_SIZE 65  // 128
 
 /* Syscalls. */
 #define SYS_READ 0
@@ -57,8 +58,8 @@
 // #define SYS_UMOUNT2 166
 // #define SYS_SETHOSTNAME 170
 // #define SYS_SETDOMAINNAME 171
-// #define SYS_INIT_MODULE 175
-// #define SYS_DELETE_MODULE 176
+#define SYS_INIT_MODULE 175
+#define SYS_DELETE_MODULE 176
 // #define SYS_QUOTACTL 179
 // #define SYS_SETXATTR 188
 // #define SYS_LSETXATTR 189
@@ -78,6 +79,7 @@
 // #define SYS_DUP3 292
 // #define SYS_PREADV 295
 // #define SYS_PWRITEV 296
+#define SYS_FINIT_MODULE 313
 #define SYS_RENAMEAT2 316
 #define SYS_EXECVEAT 322
 // #define SYS_PREADV2 327
@@ -101,16 +103,58 @@
 // #define KERNEL_IP4_DATAGRAM_CONNECT 2003
 // #define KERNEL_IP6_DATAGRAM_CONNECT 2004
 
+enum error {
+  FAILURE_CODE = -1,
+  SUCCESS_CODE = 0,
+  EMAP_LOOKUP = 0x1,
+  EMAP_UPDATE = 0x2,
+  EMAP_PUSH = 0x4,
+  EGET_CURRENT_TASK = 0x8,
+  EGET_CURRENT_COMM = 0x10,
+  EPROBE_READ_KERNEL = 0x20,
+  EPROBE_READ_KERNEL_STR = 0x40,
+  EPROBE_READ_USER = 0x80,
+  EPROBE_READ_USER_STR = 0x100,
+  ECORE_READ = 0x200,
+  ECORE_READ_STR = 0x400,
+  ECORE_READ_USER = 0x800,
+  ECORE_READ_USER_STR = 0x1000,
+  ENULL_ARG = 0x2000,
+  EDENTRIES_TOO_MUCH = 0x4000,
+  EAT_FDCWD = 0x8000,
+  ENAME_TOO_LONG = 0x10000,
+  EFILL_TASK_CRED = 0x20000,
+  EFILL_TASK_MM_DATA = 0x40000,
+  EFILL_TASK_CAPS = 0x80000,
+  EFILL_TASK = 0x100000,
+  EGET_FILE_FROM_FD = 0x200000,
+  EGET_PATH_FROM_FD = 0x400000,
+  EGET_TASK_PWD = 0x800000,
+  EREAD_PATH = 0x1000000,
+  EREAD_FD_PATH = 0x2000000,
+  EREAD_CWD = 0x4000000,
+  EFILL_MOUNT_NAMESPACE = 0x8000000,
+  EFILL_PID_NAMESPACE = 0x10000000,
+  EFILL_NEW_UTSNAME = 0x20000000,
+  EFILL_UTS_NAMESPACE = 0x40000000,
+  EFILL_USER_NAMESPACE = 0x80000000,
+  EFILL_TASK_NAMESPACES = 0x100000000,
+  ECOPY_ENTER = 0x200000000,
+  EREAD_FILENAME = 0x400000000,
+  EREAD_ARGV = 0x800000000,
+  EARGV_TOO_LONG = 0x1000000000,
+};
+
 #define ERROR_FILENAME 0x1
 #define ERROR_ARGV 0x2
-#define ERROR_READ_FD  0x4
+#define ERROR_READ_FD 0x4
 #define ERROR_READ_CWD 0x8
-#define ERROR_FILL_TASK  0x10
+#define ERROR_FILL_TASK 0x10
 #define ERROR_FILL_TASK_CAPS 0x20
-#define ERROR_FILL_BUFFER  0x40
+#define ERROR_FILL_BUFFER 0x40
 #define ERROR_COPY_ENTER 0x80
-#define ERROR_COPY_BUFFER  0x100
-#define ERROR_EXIT_CODE  0x200
+#define ERROR_COPY_BUFFER 0x100
+#define ERROR_EXIT_CODE 0x200
 #define ERROR_READ_DADDR 0x400
 #define ERROR_READ_SADDR 0x800
 #define ERROR_READ_DPORT 0x1000
@@ -128,6 +172,11 @@ enum path_type {
   PATH_RELATIVE_FD
 };
 
+struct string {
+  char str[PATH_SIZE];
+  unsigned len;
+};
+
 /* Stores data from struct cred. */
 struct task_cred {
   /* Real UID of the task. */
@@ -137,7 +186,7 @@ struct task_cred {
   /* Saved UID of the task. */
   uid_t suid;
   /* Saved GID of the task. */
-  gid_t sgid; 
+  gid_t sgid;
   /* Effective UID of the task. */
   uid_t euid;
   /* Effective GID of the task. */
@@ -146,6 +195,57 @@ struct task_cred {
   uid_t fsuid;
   /* GID for VFS ops. */
   gid_t fsgid;
+};
+
+/* Struct stores dentry.d_name entries. */
+struct path_dentries {
+  char data[PATH_SIZE];
+  /* For BPF verifier. */
+  char reserve[DENTRY_NAME_SIZE];
+  unsigned offset;
+};
+
+/* Stores data from struct mnt_namespace. */
+struct task_mnt_ns {
+  unsigned int inum;
+};
+
+/* Stores data from struct pid_namespace. */
+struct task_pid_ns {
+  unsigned int inum;
+  unsigned int level;
+  pid_t child_reaper_pid;
+};
+
+/* Stores data from struct uts_namespace. */
+struct task_uts_ns {
+  unsigned int inum;
+  char sysname[UTS_SIZE];
+  char nodename[UTS_SIZE];
+  char release[UTS_SIZE];
+  char version[UTS_SIZE];
+  char machine[UTS_SIZE];
+  char domainname[UTS_SIZE];
+};
+
+/* Stores data from struct uts_namespace. */
+struct task_user_ns {
+  unsigned int inum;
+  int level;
+};
+
+/* Stores namespaces data. */
+struct task_namespaces {
+  struct task_mnt_ns mnt_ns;
+  struct task_pid_ns pid_ns;
+  struct task_uts_ns uts_ns;
+  struct task_user_ns user_ns;
+};
+
+struct task_mm {
+  struct path_dentries exe_file;
+  char argv[PATH_SIZE];
+  int argv_size;
 };
 
 /* Stores data from struct task_struct. */
@@ -166,14 +266,8 @@ struct task {
   struct task_cred cred;
   /* Short task command. */
   char comm[TASK_COMM_LEN];
-};
-
-/* Struct stores dentry.d_name entries. */
-struct path_dentries {
-  char data[PATH_SIZE];
-  /* For BPF verifier. */
-  char reserve[DENTRY_NAME_SIZE];
-  unsigned offset;
+  struct task_mm mm;
+  struct task_namespaces ns;
 };
 
 #endif  // LOGGER_BPF_TASK_H_

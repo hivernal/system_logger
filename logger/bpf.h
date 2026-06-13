@@ -69,6 +69,13 @@ struct bpf_opts {
 
   const char* sched_process_exit_log;
   int sched_process_exit_enable;
+
+  const char* sys_init_module_log;
+  int sys_init_module_enable;
+  int sys_finit_module_enable;
+
+  const char* sys_delete_module_log;
+  int sys_delete_module_enable;
 };
 
 struct bpf* bpf_init(struct bpf_opts* opts);

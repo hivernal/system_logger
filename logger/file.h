@@ -55,45 +55,21 @@ static inline int sys_write_rename_cb_data_init(
 }
 
 /* Callback function for sys_write_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_write_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_write_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sys_read_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_read_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_read_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sys_unlink_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_unlink_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_unlink_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sys_chmod_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_chmod_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_chmod_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sys_chown_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_chown_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_chown_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sys_rename_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_rename_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_rename_cb(void* ctx, int map, void* data, unsigned data_sz);
-#endif
 
 #endif  //  LOGGER_FILE_H_

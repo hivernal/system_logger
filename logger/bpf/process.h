@@ -5,15 +5,15 @@
 
 #define ARG_SIZE 256
 #define MAX_ARGS 128
-#define ARGS_SIZE ((ARG_SIZE * MAX_ARGS)/4)
+#define ARGS_SIZE ((ARG_SIZE * MAX_ARGS) / 4)
 #define LAST_ARG_OFFSET (ARGS_SIZE - ARG_SIZE)
 
 /*
  * P'(ambient) = (file is privileged) ? 0 : P(ambient)
- * P'(permitted) = (P(inheritable) & F(inheritable)) | (F(permitted) & P(bounding)) | P'(ambient)
- * P'(effective) = F(effective) ? P'(permitted) : P'(ambient)
- * P'(inheritable) = P(inheritable) [i.e., unchanged]
- * P'(bounding) = P(bounding) [i.e., unchanged]
+ * P'(permitted) = (P(inheritable) & F(inheritable)) | (F(permitted) &
+ * P(bounding)) | P'(ambient) P'(effective) = F(effective) ? P'(permitted) :
+ * P'(ambient) P'(inheritable) = P(inheritable) [i.e., unchanged] P'(bounding) =
+ * P(bounding) [i.e., unchanged]
  */
 
 /* P() denotes the value of a thread capability set before the execve.
@@ -25,7 +25,7 @@ struct task_caps {
   /* Caps that can be inherited by the child task. */
   unsigned long long inheritable;
   /* Caps that can be used by the task. */
-  unsigned long long permitted; 
+  unsigned long long permitted;
   /* Caps that are actually used by the task. */
   unsigned long long effective;
   /*
@@ -34,16 +34,17 @@ struct task_caps {
    */
   unsigned long long bset;
   /* Ambient caps. Since linux 4.3 */
-  unsigned long long ambient; 
+  unsigned long long ambient;
 };
 
 /* Struct for execve syscall. */
 struct sys_execve {
   /* A binary executable, or a script name. */
-  char filename[PATH_SIZE];
-  /* Arguments. */ 
+  // char filename[PATH_SIZE];
+  struct string filename;
+  /* Arguments. */
   char argv[ARGS_SIZE];
-  int error;
+  enum error errors;
   /* execve returned value. */
   int ret;
   struct task task;
@@ -70,7 +71,7 @@ struct sys_clone {
   struct task task;
   uint64_t flags;
   int event_type;
-  int error;
+  enum error errors;
   int ret;
 };
 
@@ -78,7 +79,7 @@ struct sys_clone {
 struct sched_process_exit {
   int exit_code;
   int group_dead;
-  int error;
+  enum error errors;
   struct task task;
 };
 

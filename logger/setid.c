@@ -33,12 +33,7 @@ void fprint_sys_setid(FILE* file, const struct sys_setid* sys_setid) {
   fputc('\n', file);
 }
 
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_setid_cb(void* ctx, void* data, size_t data_sz UNUSED) {
-#else
-void sys_setid_cb(void* ctx, int cpu UNUSED, void* data,
-                  unsigned data_sz UNUSED) {
-#endif
   FILE* file = fopen(*(const char**)ctx, "a");
   if (file) {
     fprint_sys_setid(file, data);
@@ -46,7 +41,5 @@ void sys_setid_cb(void* ctx, int cpu UNUSED, void* data,
   } else {
     fprint_sys_setid(stdout, data);
   }
-#ifdef HAVE_RINGBUF_MAP_TYPE
   return 0;
-#endif
 }

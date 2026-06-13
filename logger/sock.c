@@ -51,12 +51,7 @@ void fprint_sys_sock(FILE* file, const struct sys_sock* sys_sock) {
   fputc('\n', file);
 }
 
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_sock_cb(void* ctx, void* data, size_t data_sz UNUSED) {
-#else
-void sys_sock_cb(void* ctx, int cpu UNUSED, void* data,
-                 unsigned data_sz UNUSED) {
-#endif
   FILE* file = fopen(*(const char**)ctx, "a");
   if (file) {
     fprint_sys_sock(file, data);
@@ -64,7 +59,5 @@ void sys_sock_cb(void* ctx, int cpu UNUSED, void* data,
   } else {
     fprint_sys_sock(stdout, data);
   }
-#ifdef HAVE_RINGBUF_MAP_TYPE
   return 0;
-#endif
 }

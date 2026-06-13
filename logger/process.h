@@ -26,24 +26,12 @@ static inline void sys_execve_cb_data_delete(struct sys_execve_cb_data* data) {
 }
 
 /* Callback function for sys_execve_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_execve_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_execve_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sys_clone_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_clone_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sys_clone_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 /* Callback function for sched_process_exit_buf ring buffer. */
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sched_process_exit_cb(void* ctx, void* data, size_t data_sz);
-#else
-void sched_process_exit_cb(void* ctx, int cpu, void* data, unsigned data_sz);
-#endif
 
 #endif  // LOGGER_PROCESS_H_

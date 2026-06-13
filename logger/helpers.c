@@ -1,8 +1,69 @@
 #include "logger/helpers.h"
 #include "logger/list.h"
 
+#include <stddef.h>
+
 #define dentry_range_init() malloc(sizeof(struct dentry_range))
 #define dentry_range_delete(ptr) free(ptr)
+
+const char* find_parent_dentry(const struct path_dentries* filename,
+                               int parent) {
+  const char* const filename_start = filename->data + filename->offset;
+  const char* sptr = filename->data + sizeof(filename->data) - 2;
+  if (parent <= 0) return sptr;
+  if (*sptr == '/') --sptr;
+  for (; parent > 0 && sptr >= filename_start; --sptr) {
+    if (*sptr == '/') --parent;
+  }
+  return ++sptr;
+}
+
+char* resolve_full_path(const struct path_dentries* cwd,
+                        const struct string* filename, char* buffer,
+                        size_t buffer_size) {
+  char* dptr = buffer + buffer_size - 1;
+  const char* sptr = filename->str + filename->len - 1;
+  int parent = 0;
+  for (; sptr >= filename->str && dptr >= buffer; --sptr) {
+    if (*sptr == '/') {
+      if (sptr - 1 >= filename->str && *(sptr - 1) == '.') {
+        --sptr;
+        if (sptr - 1 >= filename->str && *(sptr - 1) == '.') {
+          ++parent;
+          --sptr;
+        }
+        continue;
+      } else if (sptr - 1 >= filename->str && *(sptr - 1) == '/') {
+        continue;
+      } else if (parent > 0) {
+        for (; sptr - 1 >= filename->str && *(sptr - 1) != '/'; --sptr);
+        --parent;
+        continue;
+      }
+    }
+    *dptr = *sptr;
+    --dptr;
+  }
+  if (filename->str[0] == '/') {
+    *dptr = '/';
+    return dptr;
+  }
+  const char* cwd_end = find_parent_dentry(cwd, parent);
+  const char* const cwd_start = cwd->data + cwd->offset;
+  ptrdiff_t cwd_size = cwd_end - cwd_start;
+  if (dptr - cwd_size < buffer) goto inc_dptr;
+  for (; cwd_end >= cwd_start; --cwd_end, --dptr) *dptr = *cwd_end;
+inc_dptr:
+  ++dptr;
+  return dptr;
+}
+
+void fprint_full_path(FILE* file, const struct string* filename,
+                      const struct path_dentries* dir) {
+  if (!filename || filename->str[0] == '\0') return;
+  char buffer[sizeof(filename->str)];
+  fputs(resolve_full_path(dir, filename, buffer, sizeof(buffer)), file);
+}
 
 /* Gets const char pointers to each filename entry. */
 int get_filename_cptrs(struct list_head* list, const char* filename) {
@@ -70,9 +131,7 @@ void dentry_ranges_delete(struct list_head* list) {
 
 void fprint_dentry_ranges(FILE* file, const struct list_head* list) {
   const struct dentry_range* c;
-  list_for_each_entry(c, list, node) { 
-    fprint_substr(file, c->start, c->end);
-  }
+  list_for_each_entry(c, list, node) { fprint_substr(file, c->start, c->end); }
 }
 
 void fprint_relative_filename(FILE* file, const char* filename,

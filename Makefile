@@ -11,7 +11,8 @@ LIBBPF_OUTPUT := $(abspath ./libbpf)
 LIBBPF_OBJ := $(abspath ./libbpf/usr/lib64/libbpf.a)
 
 USER_SRC := $(wildcard $(SRC_DIR)/*.c)
-# BPF_HELPERS_SRC := $(SRC_DIR)/bpf/helpers.bpf.c
+BPF_HELPERS := $(SRC_DIR)/bpf/helpers.h $(SRC_DIR)/bpf/task.h
+HELPERS := $(SRC_DIR)/helpers.h
 BPF_SRC := $(wildcard $(SRC_DIR)/bpf/*.bpf.c)
 # BPF_SRC := $(filter-out $(BPF_HELPERS_SRC),$(BPF_SRC))
 
@@ -64,15 +65,15 @@ $(VMLINUX): $(BPFTOOL)
 $(FEATURE_PROBE): $(BPFTOOL)
 	$(Q)echo "#ifndef LOGGER_BPF_FEATURE_PROBE_H_" > $@
 	$(Q)echo -e "#define LOGGER_BPF_FEATURE_PROBE_H_\n" >> $@
-	sudo $(BPFTOOL) feature probe full macro >> $@
+	# $(BPFTOOL) feature probe full macro >> $@
 	$(Q)echo "#define LINUX_KERNEL_VERSION $(LINUX_KERNEL_VERSION)" >> $@
 	$(Q)echo "#define GET_LINUX_KERNEL_VERSION(a,b) (((a) << 16) + ((b) << 8))" >> $@
 	$(Q)echo "#define NPROC $(NPROC)" >> $@
 	$(Q)echo -e "\n#endif // LOGGER_BPF_FEATURE_PROBE_H_" >> $@
 
+feature_probe: $(FEATURE_PROBE)
 
-
-$(OUTPUT)/%.bpf.o: $(SRC_DIR)/bpf/%.bpf.c $(SRC_DIR)/bpf/%.h $(LIBBPF_OBJ) $(VMLINUX) $(FEATURE_PROBE) | $(OUTPUT) $(BPFTOOL)
+$(OUTPUT)/%.bpf.o: $(BPF_HELPERS) $(SRC_DIR)/bpf/%.bpf.c $(SRC_DIR)/bpf/%.h $(LIBBPF_OBJ) $(VMLINUX) $(FEATURE_PROBE) | $(OUTPUT) $(BPFTOOL)
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) $(CLANG_CFLAGS) -O2 -target bpf -D__TARGET_ARCH_$(ARCH)		      \
 		     $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES)		      \
@@ -83,7 +84,7 @@ $(SRC_DIR)/%.skel.h: $(OUTPUT)/%.bpf.o | $(OUTPUT) $(BPFTOOL)
 	# $(Q)$(BPFTOOL) gen object $(OUTPUT)/$*.skel.o $(filter %.o,$^)
 	$(Q)$(BPFTOOL) gen skeleton $(OUTPUT)/$*.bpf.o > $@
 
-$(OUTPUT)/%.o: $(BPF_SKELS) $(SRC_DIR)/%.c | $(OUTPUT)
+$(OUTPUT)/%.o: $(HELPERS) $(BPF_SKELS) $(SRC_DIR)/%.c | $(OUTPUT)
 	$(call msg,CLANG,$@)
 	$(Q)$(CLANG) $(CLANG_CFLAGS) $(INCLUDES) -c $(filter %.c,$^) -o $@
 

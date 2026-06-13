@@ -75,7 +75,8 @@ void check_cap(FILE* file, unsigned long long cap) {
   if (cap == CAP_FULL) return;
 #define CHECK_CAP(value)       \
   if (cap & (1ULL << (value))) \
-    fprintf(file, ", %s (0x%llx)", #value, 1ULL << (value));
+    fprintf(file, " %s", #value);
+    // fprintf(file, ", %s (0x%llx)", #value, 1ULL << (value));
 
   CHECK_CAP(CAP_CHOWN);
   CHECK_CAP(CAP_DAC_OVERRIDE);
@@ -123,20 +124,29 @@ void check_cap(FILE* file, unsigned long long cap) {
 }
 
 void check_caps(FILE* file, const struct task_caps* caps) {
-  fprintf(file, "capinh: 0x%llx", caps->inheritable);
-  // check_cap(file, caps->inheritable);
+  fprintf(file, "capinh");
+  // fprintf(file, "capinh: 0x%llx", caps->inheritable);
+  check_cap(file, caps->inheritable);
   fputc('\n', file);
-  fprintf(file, "capprm: 0x%llx", caps->permitted);
-  // check_cap(file, caps->permitted);
+
+  fprintf(file, "capprm");
+  // fprintf(file, "capprm: 0x%llx", caps->permitted);
+  check_cap(file, caps->permitted);
   fputc('\n', file);
-  fprintf(file, "capeff: 0x%llx", caps->effective);
-  // check_cap(file, caps->effective);
+
+  fprintf(file, "capeff:");
+  // fprintf(file, "capeff: 0x%llx", caps->effective);
+  check_cap(file, caps->effective);
   fputc('\n', file);
-  fprintf(file, "capbnd: 0x%llx", caps->bset);
-  // check_cap(file, caps->bset);
+
+  fprintf(file, "capbnd:");
+  // fprintf(file, "capbnd: 0x%llx", caps->bset);
+  check_cap(file, caps->bset);
   fputc('\n', file);
-  fprintf(file, "capamb: 0x%llx", caps->ambient);
-  // check_cap(file, caps->ambient);
+
+  fprintf(file, "capamb:");
+  // fprintf(file, "capamb: 0x%llx", caps->ambient);
+  check_cap(file, caps->ambient);
 }
 
 void fprint_sys_execve(FILE* file, const struct sys_execve* sys_execve,
@@ -151,35 +161,30 @@ void fprint_sys_execve(FILE* file, const struct sys_execve* sys_execve,
   }
   fprintf(file, "filename: ");
   if (sys_execve->filename_type == PATH_ABSOLUTE) {
-    fprintf(file, "%s", sys_execve->filename);
-    fprint_hash_filename(file, sys_execve->filename, hash);
+    fprintf(file, "%s", sys_execve->filename.str);
+    fprint_hash_filename(file, sys_execve->filename.str, hash);
   } else if (sys_execve->filename_type == PATH_RELATIVE_CWD) {
-    fprint_relative_filename(file, sys_execve->filename, &sys_execve->cwd);
+    fprint_full_path(file, &sys_execve->filename, &sys_execve->cwd);
     fprint_hash_dir_filename(file,
                              sys_execve->cwd.data + sys_execve->cwd.offset,
-                             sys_execve->filename, hash);
+                             sys_execve->filename.str, hash);
   } else if (sys_execve->filename_type == PATH_RELATIVE_FD) {
     const struct sys_execveat* sys_execveat = (struct sys_execveat*)sys_execve;
-    fprint_relative_filename(file, sys_execve->filename, &sys_execveat->dir);
+    fprint_full_path(file, &sys_execve->filename, &sys_execveat->dir);
     fprint_hash_dir_filename(file,
                              sys_execveat->dir.data + sys_execveat->dir.offset,
-                             sys_execve->filename, hash);
+                             sys_execve->filename.str, hash);
   }
-  fprintf(file, "\nargv: %s\ncwd: %s\nret: %d\nerror: 0x%x\n", sys_execve->argv,
-          sys_execve->cwd.data + sys_execve->cwd.offset, sys_execve->ret,
-          sys_execve->error);
+  fprintf(file, "\nargv: %s\ncwd: %s\nret: %d\nerrors: 0x%lx\n",
+          sys_execve->argv, sys_execve->cwd.data + sys_execve->cwd.offset,
+          sys_execve->ret, sys_execve->errors);
   check_caps(file, &sys_execve->caps);
   fputc('\n', file);
   fprint_task(file, &sys_execve->task);
   fputc('\n', file);
 }
 
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_execve_cb(void* ctx, void* data, size_t data_sz UNUSED) {
-#else
-void sys_execve_cb(void* ctx, int cpu UNUSED, void* data,
-                   unsigned data_sz UNUSED) {
-#endif
   FILE* file = fopen(((struct sys_execve_cb_data*)ctx)->filename, "a");
   if (file) {
     fprint_sys_execve(file, data, ctx);
@@ -187,9 +192,7 @@ void sys_execve_cb(void* ctx, int cpu UNUSED, void* data,
   } else {
     fprint_sys_execve(stdout, data, ctx);
   }
-#ifdef HAVE_RINGBUF_MAP_TYPE
   return 0;
-#endif
 }
 
 void fprint_sys_clone(FILE* file, const struct sys_clone* sys_clone) {
@@ -200,18 +203,13 @@ void fprint_sys_clone(FILE* file, const struct sys_clone* sys_clone) {
   } else {
     return;
   }
-  fprintf(file, "flags: 0x%lx\nerror: 0x%x\n", sys_clone->flags,
-          sys_clone->error);
+  fprintf(file, "flags: 0x%lx\nerrors: 0x%lx\n", sys_clone->flags,
+          sys_clone->errors);
   fprint_task(file, &sys_clone->task);
   fputc('\n', file);
 }
 
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sys_clone_cb(void* ctx, void* data, size_t data_sz UNUSED) {
-#else
-void sys_clone_cb(void* ctx, int cpu UNUSED, void* data,
-                  unsigned data_sz UNUSED) {
-#endif
   FILE* file = fopen(*(const char**)ctx, "a");
   if (file) {
     fprint_sys_clone(file, data);
@@ -219,28 +217,21 @@ void sys_clone_cb(void* ctx, int cpu UNUSED, void* data,
   } else {
     fprint_sys_clone(stdout, data);
   }
-#ifdef HAVE_RINGBUF_MAP_TYPE
   return 0;
-#endif
 }
 
 void fprint_sched_process_exit(
     FILE* file, const struct sched_process_exit* sched_process_exit) {
   fprintf(file,
-          "event: sched_process_exit\nexit_code: 0x%x\ngroup_dead: %d\nerror: "
-          "0x%x\n",
+          "event: sched_process_exit\nexit_code: 0x%x\n"
+          "group_dead: %d\nerrors: 0x%lx\n",
           sched_process_exit->exit_code, sched_process_exit->group_dead,
-          sched_process_exit->error);
+          sched_process_exit->errors);
   fprint_task(file, &sched_process_exit->task);
   fputc('\n', file);
 }
 
-#ifdef HAVE_RINGBUF_MAP_TYPE
 int sched_process_exit_cb(void* ctx, void* data, size_t data_sz UNUSED) {
-#else
-void sched_process_exit_cb(void* ctx, int cpu UNUSED, void* data,
-                           unsigned data_sz UNUSED) {
-#endif
   FILE* file = fopen(*(const char**)ctx, "a");
   if (file) {
     fprint_sched_process_exit(file, data);
@@ -248,7 +239,5 @@ void sched_process_exit_cb(void* ctx, int cpu UNUSED, void* data,
   } else {
     fprint_sched_process_exit(stdout, data);
   }
-#ifdef HAVE_RINGBUF_MAP_TYPE
   return 0;
-#endif
 }

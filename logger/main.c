@@ -36,6 +36,10 @@
   "\t\t\t\tevents.\n"                                                          \
   "--sched_process_exit_log=FILE\tSets the log file for the\n"                 \
   "\t\t\t\tsched_process_exit events.\n"                                       \
+  "--sys_init_module_log=FILE\tSets the log file for the\n"                    \
+  "\t\t\t\tsys_init_module events.\n"                                          \
+  "--sys_delete_module_log=FILE\tSets the log file for the\n"                  \
+  "\t\t\t\tsys_delete_module events.\n"                                        \
   "EVENT:\n"                                                                   \
   "sys_read, sys_pread64, sys_readv, sys_preadv, sys_preadv2.\n"               \
   "sys_write, sys_pwrite64, sys_writev, sys_pwritev, sys_pwritev2.\n"          \
@@ -49,6 +53,8 @@
   "sys_execve, sys_execveat.\n"                                                \
   "sys_clone, sys_clone3.\n"                                                   \
   "sched_process_exit.\n"                                                      \
+  "sys_init_module, sys_finit_module.\n"                                       \
+  "sys_delete_module.\n"                                                       \
   "EXAMPLE:\n"                                                                 \
   "system_logger "                                                             \
   "--sched_process_exit_log=/var/log/system_logger/sched_process_exit.log "    \
@@ -67,6 +73,8 @@
 #define SYS_RENAME_LOG "/var/log/system_logger/sys_rename.log"
 #define SYS_SETID_LOG "/var/log/system_logger/sys_setid.log"
 #define SYS_SOCK_LOG "/var/log/system_logger/sys_sock.log"
+#define SYS_INIT_MODULE_LOG "/var/log/system_logger/sys_init_module.log"
+#define SYS_DELETE_MODULE_LOG "/var/log/system_logger/sys_delete_module.log"
 
 /* For capturing signals. */
 volatile sig_atomic_t bpf_is_run = 1;
@@ -124,6 +132,11 @@ void signal_callback(int sig __attribute__((unused))) { bpf_is_run = 0; }
                           .sys_clone_log = SYS_CLONE_LOG,                   \
                           .sys_clone_enable = 1,                            \
                           .sys_clone3_enable = 1,                           \
+                          .sys_init_module_log = SYS_INIT_MODULE_LOG,       \
+                          .sys_init_module_enable = 1,                      \
+                          .sys_finit_module_enable = 1,                     \
+                          .sys_delete_module_log = SYS_DELETE_MODULE_LOG,   \
+                          .sys_delete_module_enable = 1,                    \
                           .sched_process_exit_log = SCHED_PROCESS_EXIT_LOG, \
                           .sched_process_exit_enable = 1}
 
@@ -187,6 +200,13 @@ enum {
   sys_clone_log_val,
   sys_clone_enable_val,
   sys_clone3_enable_val,
+
+  sys_init_module_log_val,
+  sys_init_module_enable_val,
+  sys_finit_module_enable_val,
+
+  sys_delete_module_log_val,
+  sys_delete_module_enable_val,
 
   sched_process_exit_log_val,
   sched_process_exit_enable_val,
@@ -256,6 +276,13 @@ static const struct option longopts[] = {
     LONGOPT(sys_clone_enable),
     LONGOPT(sys_clone3_enable),
 
+    LONGOPT(sys_init_module_log),
+    LONGOPT(sys_init_module_enable),
+    LONGOPT(sys_finit_module_enable),
+
+    LONGOPT(sys_delete_module_log),
+    LONGOPT(sys_delete_module_enable),
+
     LONGOPT(sched_process_exit_log),
     LONGOPT(sched_process_exit_enable)};
 
@@ -291,6 +318,8 @@ int main(int argc, char* argv[]) {
     ELSE_IF_LOG(type, sys_execve_log, bpf_opts);
     ELSE_IF_LOG(type, sys_clone_log, bpf_opts);
     ELSE_IF_LOG(type, sched_process_exit_log, bpf_opts);
+    ELSE_IF_LOG(type, sys_init_module_log, bpf_opts);
+    ELSE_IF_LOG(type, sys_delete_module_log, bpf_opts);
     ELSE_IF_ENABLE(type, sys_read_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_pread64_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_readv_enable, bpf_opts);
@@ -329,6 +358,9 @@ int main(int argc, char* argv[]) {
     ELSE_IF_ENABLE(type, sys_execveat_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_clone_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_clone3_enable, bpf_opts);
+    ELSE_IF_ENABLE(type, sys_init_module_enable, bpf_opts);
+    ELSE_IF_ENABLE(type, sys_finit_module_enable, bpf_opts);
+    ELSE_IF_ENABLE(type, sys_delete_module_enable, bpf_opts);
     else if (type == hash_alg_val) bpf_opts.hash_alg = optarg;
     ELSE_IF_ENABLE(type, sched_process_exit_enable, bpf_opts);
   }
