@@ -127,10 +127,9 @@ FUNC_INLINE int on_sys_exit_setid(int ret, int type) {
   }
   sys_setid->ret = ret;
   sys_setid->event_type = type;
-  sys_setid->error = 0;
-  enum error errors = 0;
-  if (fill_task(&sys_setid->task, &errors) == FAILURE_CODE)
-    sys_setid->error |= ERROR_FILL_TASK;
+  sys_setid->errors = 0;
+  if (fill_task(&sys_setid->task, &sys_setid->errors) == FAILURE_CODE)
+    sys_setid->errors |= EFILL_TASK;
   bpf_ringbuf_submit(sys_setid, 0);
 clean:
   bpf_map_delete_elem(&sys_enter_setid_hash, &hash_id);

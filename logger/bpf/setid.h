@@ -5,7 +5,7 @@
 
 #define SYS_SETID_HEADER \
   struct task task;      \
-  int error;             \
+  enum error errors;     \
   int event_type;        \
   int ret
 

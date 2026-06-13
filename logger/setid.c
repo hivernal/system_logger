@@ -28,7 +28,7 @@ void fprint_sys_setid(FILE* file, const struct sys_setid* sys_setid) {
   } else if (sys_setid->event_type == SYS_SETFSGID) {
     fprintf(file, "event: sys_setfsgid\ntarget_fsgid: %u\n", sys_setid->ids[0]);
   }
-  fprintf(file, "error: 0x%x\nret: %d\n", sys_setid->error, sys_setid->ret);
+  fprintf(file, "errors: 0x%lx\nret: %d\n", sys_setid->errors, sys_setid->ret);
   fprint_task(file, &sys_setid->task);
   fputc('\n', file);
 }

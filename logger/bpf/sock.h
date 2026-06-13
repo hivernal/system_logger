@@ -7,7 +7,7 @@
 struct sys_sock {
   struct task task;
   int event_type;
-  int error;
+  enum error errors;
   /* IP family. AF_INET, AF_INET6. */
   sa_family_t family;
   int type;
