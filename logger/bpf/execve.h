@@ -8,35 +8,6 @@
 #define ARGS_SIZE ((ARG_SIZE * MAX_ARGS) / 4)
 #define LAST_ARG_OFFSET (ARGS_SIZE - ARG_SIZE)
 
-/*
- * P'(ambient) = (file is privileged) ? 0 : P(ambient)
- * P'(permitted) = (P(inheritable) & F(inheritable)) | (F(permitted) &
- * P(bounding)) | P'(ambient) P'(effective) = F(effective) ? P'(permitted) :
- * P'(ambient) P'(inheritable) = P(inheritable) [i.e., unchanged] P'(bounding) =
- * P(bounding) [i.e., unchanged]
- */
-
-/* P() denotes the value of a thread capability set before the execve.
- * P'() denotes the value of a thread capability set after the execve.
- * F() denotes a file capability set.
- */
-
-struct task_caps {
-  /* Caps that can be inherited by the child task. */
-  unsigned long long inheritable;
-  /* Caps that can be used by the task. */
-  unsigned long long permitted;
-  /* Caps that are actually used by the task. */
-  unsigned long long effective;
-  /*
-   * Bounding caps.
-   * Can be used to limit the caps that are gained during execve.
-   */
-  unsigned long long bset;
-  /* Ambient caps. Since linux 4.3 */
-  unsigned long long ambient;
-};
-
 /* Struct for execve syscall. */
 struct sys_execve {
   /* A binary executable, or a script name. */
@@ -50,8 +21,6 @@ struct sys_execve {
   struct task task;
   enum path_type filename_type;
   int event_type;
-  /* Task capabilities. */
-  struct task_caps caps;
   /* Current working directory of the task. */
   struct path_dentries cwd;
 };

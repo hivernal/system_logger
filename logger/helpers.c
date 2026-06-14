@@ -6,6 +6,100 @@
 #define dentry_range_init() malloc(sizeof(struct dentry_range))
 #define dentry_range_delete(ptr) free(ptr)
 
+/* Capabilities from linux/capabilities.h. */
+#define CAP_CHOWN 0
+#define CAP_DAC_OVERRIDE 1
+#define CAP_DAC_READ_SEARCH 2
+#define CAP_FOWNER 3
+#define CAP_FSETID 4
+#define CAP_KILL 5
+#define CAP_SETGID 6
+#define CAP_SETUID 7
+#define CAP_SETPCAP 8
+#define CAP_LINUX_IMMUTABLE 9
+#define CAP_NET_BIND_SERVICE 10
+#define CAP_NET_BROADCAST 11
+#define CAP_NET_ADMIN 12
+#define CAP_NET_RAW 13
+#define CAP_IPC_LOCK 14
+#define CAP_IPC_OWNER 15
+#define CAP_SYS_MODULE 16
+#define CAP_SYS_RAWIO 17
+#define CAP_SYS_CHROOT 18
+#define CAP_SYS_PTRACE 19
+#define CAP_SYS_PACCT 20
+#define CAP_SYS_ADMIN 21
+#define CAP_SYS_BOOT 22
+#define CAP_SYS_NICE 23
+#define CAP_SYS_RESOURCE 24
+#define CAP_SYS_TIME 25
+#define CAP_SYS_TTY_CONFIG 26
+#define CAP_MKNOD 27
+#define CAP_LEASE 28
+#define CAP_AUDIT_WRITE 29
+#define CAP_AUDIT_CONTROL 30
+#define CAP_SETFCAP 31
+#define CAP_MAC_OVERRIDE 32
+#define CAP_MAC_ADMIN 33
+#define CAP_SYSLOG 34
+#define CAP_WAKE_ALARM 35
+#define CAP_BLOCK_SUSPEND 36
+#define CAP_AUDIT_READ 37
+#define CAP_PERFMON 38
+#define CAP_BPF 39
+#define CAP_CHECKPOINT_RESTORE 40
+#define CAP_FULL 0x1ffffffffff
+
+void check_cap(FILE* file, unsigned long long cap) {
+  if (cap == CAP_FULL) return;
+#define CHECK_CAP(value)       \
+  if (cap & (1ULL << (value))) \
+    fprintf(file, " %s", #value);
+    // fprintf(file, ", %s (0x%llx)", #value, 1ULL << (value));
+  CHECK_CAP(CAP_CHOWN);
+  CHECK_CAP(CAP_DAC_OVERRIDE);
+  CHECK_CAP(CAP_DAC_READ_SEARCH);
+  CHECK_CAP(CAP_FOWNER);
+  CHECK_CAP(CAP_FSETID);
+  CHECK_CAP(CAP_KILL);
+  CHECK_CAP(CAP_SETGID);
+  CHECK_CAP(CAP_SETUID);
+  CHECK_CAP(CAP_SETPCAP);
+  CHECK_CAP(CAP_LINUX_IMMUTABLE);
+  CHECK_CAP(CAP_NET_BIND_SERVICE);
+  CHECK_CAP(CAP_NET_BROADCAST);
+  CHECK_CAP(CAP_NET_ADMIN);
+  CHECK_CAP(CAP_NET_RAW);
+  CHECK_CAP(CAP_IPC_LOCK);
+  CHECK_CAP(CAP_IPC_OWNER);
+  CHECK_CAP(CAP_SYS_MODULE);
+  CHECK_CAP(CAP_SYS_RAWIO);
+  CHECK_CAP(CAP_SYS_CHROOT);
+  CHECK_CAP(CAP_SYS_PTRACE);
+  CHECK_CAP(CAP_SYS_PACCT);
+  CHECK_CAP(CAP_SYS_ADMIN);
+  CHECK_CAP(CAP_SYS_BOOT);
+  CHECK_CAP(CAP_SYS_NICE);
+  CHECK_CAP(CAP_SYS_RESOURCE);
+  CHECK_CAP(CAP_SYS_TIME);
+  CHECK_CAP(CAP_SYS_TTY_CONFIG);
+  CHECK_CAP(CAP_MKNOD);
+  CHECK_CAP(CAP_LEASE);
+  CHECK_CAP(CAP_AUDIT_WRITE);
+  CHECK_CAP(CAP_AUDIT_CONTROL);
+  CHECK_CAP(CAP_SETFCAP);
+  CHECK_CAP(CAP_MAC_OVERRIDE);
+  CHECK_CAP(CAP_MAC_ADMIN);
+  CHECK_CAP(CAP_SYSLOG);
+  CHECK_CAP(CAP_WAKE_ALARM);
+  CHECK_CAP(CAP_BLOCK_SUSPEND);
+  CHECK_CAP(CAP_AUDIT_READ);
+  CHECK_CAP(CAP_PERFMON);
+  CHECK_CAP(CAP_BPF);
+  CHECK_CAP(CAP_CHECKPOINT_RESTORE);
+#undef CHECK_CAPS
+}
+
 const char* find_parent_dentry(const struct path_dentries* filename,
                                int parent) {
   const char* const filename_start = filename->data + filename->offset;

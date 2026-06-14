@@ -2,6 +2,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
+#include "logger/mmap.skel.h"
 #include "logger/execve.skel.h"
 #include "logger/process.skel.h"
 #include "logger/file.skel.h"
@@ -15,6 +16,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "logger/mmap.h"
 #include "logger/execve.h"
 #include "logger/process.h"
 #include "logger/file.h"
@@ -49,6 +51,8 @@ struct bpf {
   struct process_bpf* process_skel;
   /* sys_execve, sys_execveat skeleton object. */
   struct execve_bpf* execve_skel;
+  /* sys_mmap skeleton object. */
+  struct mmap_bpf* mmap_skel;
   /*
    * sys_write, sys_read, sys_unlink, sys_unlinkat, sys_chmod, sys_fchmodat,
    * sys_fchmodat2, sys_fchmod, sys_chown, sys_fchown, sys_fchownat, sys_rename,
@@ -60,7 +64,8 @@ struct bpf {
    * sys_setresgid, sys_setfsuid, sys_setfsgid skeleton object.
    */
   struct setid_bpf* setid_skel;
-  /* sys_connect, sys_accept, sys_accept4, sys_listen, sys_close skeleton object. */
+  /* sys_connect, sys_accept, sys_accept4, sys_listen, sys_close skeleton
+   * object. */
   struct sock_bpf* sock_skel;
   /* sys_init_module, sys_finit_module skeleton object. */
   struct init_module_bpf* init_module_skel;
@@ -80,11 +85,13 @@ struct bpf {
   struct sys_write_rename_cb_data sys_rename_cb_data;
 };
 
-#define EXECVE_SKEL_DISABLED(opts)                              \
+#define MMAP_SKEL_DISABLED(opts) (!(opts)->sys_mmap_enable)
+
+#define EXECVE_SKEL_DISABLED(opts) \
   (!(opts)->sys_execve_enable && !(opts)->sys_execveat_enable)
 
-#define PROCESS_SKEL_DISABLED(opts)                              \
-   (!(opts)->sys_clone_enable&& !(opts)->sys_clone3_enable &&    \
+#define PROCESS_SKEL_DISABLED(opts)                           \
+  (!(opts)->sys_clone_enable && !(opts)->sys_clone3_enable && \
    !(opts)->sched_process_exit_enable)
 
 #define FILE_SKEL_DISABLED(opts)                                    \
@@ -141,40 +148,29 @@ struct bpf {
 
 /* Opens BPF application. */
 int bpf_open(struct bpf* bpf, const struct bpf_opts* opts) {
-  if (EXECVE_SKEL_DISABLED(opts))
-    bpf->execve_skel = NULL;
-  else if (!(bpf->execve_skel = execve_bpf__open()))
-    goto err;
+  if (MMAP_SKEL_DISABLED(opts)) bpf->mmap_skel = NULL;
+  else if (!(bpf->mmap_skel = mmap_bpf__open())) goto err;
 
-  if (PROCESS_SKEL_DISABLED(opts))
-    bpf->process_skel = NULL;
-  else if (!(bpf->process_skel = process_bpf__open()))
-    goto err;
+  if (EXECVE_SKEL_DISABLED(opts)) bpf->execve_skel = NULL;
+  else if (!(bpf->execve_skel = execve_bpf__open())) goto err;
 
-  if (FILE_SKEL_DISABLED(opts))
-    bpf->file_skel = NULL;
-  else if (!(bpf->file_skel = file_bpf__open()))
-    goto err;
+  if (PROCESS_SKEL_DISABLED(opts)) bpf->process_skel = NULL;
+  else if (!(bpf->process_skel = process_bpf__open())) goto err;
 
-  if (SETID_SKEL_DISABLED(opts))
-    bpf->setid_skel = NULL;
-  else if (!(bpf->setid_skel = setid_bpf__open()))
-    goto err;
+  if (FILE_SKEL_DISABLED(opts)) bpf->file_skel = NULL;
+  else if (!(bpf->file_skel = file_bpf__open())) goto err;
 
-  if (SOCK_SKEL_DISABLED(opts))
-    bpf->sock_skel = NULL;
-  else if (!(bpf->sock_skel = sock_bpf__open()))
-    goto err;
+  if (SETID_SKEL_DISABLED(opts)) bpf->setid_skel = NULL;
+  else if (!(bpf->setid_skel = setid_bpf__open())) goto err;
 
-  if (INIT_MODULE_SKEL_DISABLED(opts))
-    bpf->init_module_skel = NULL;
-  else if (!(bpf->init_module_skel = init_module_bpf__open()))
-    goto err;
+  if (SOCK_SKEL_DISABLED(opts)) bpf->sock_skel = NULL;
+  else if (!(bpf->sock_skel = sock_bpf__open())) goto err;
 
-  if (DELETE_MODULE_SKEL_DISABLED(opts))
-    bpf->delete_module_skel = NULL;
-  else if (!(bpf->delete_module_skel = delete_module_bpf__open()))
-    goto err;
+  if (INIT_MODULE_SKEL_DISABLED(opts)) bpf->init_module_skel = NULL;
+  else if (!(bpf->init_module_skel = init_module_bpf__open())) goto err;
+
+  if (DELETE_MODULE_SKEL_DISABLED(opts)) bpf->delete_module_skel = NULL;
+  else if (!(bpf->delete_module_skel = delete_module_bpf__open())) goto err;
 
   return 0;
 err:
@@ -229,8 +225,15 @@ int set_autoload_file_skel(struct file_bpf* skel, const struct bpf_opts* opts) {
   return file_bpf__load(skel);
 }
 
+int set_autoload_mmap_skel(struct mmap_bpf* skel,
+                             const struct bpf_opts* opts) {
+  if (!skel) return 0;
+  bpf_program_set_autoload_sys(skel, mmap);
+  return mmap_bpf__load(skel);
+}
+
 int set_autoload_execve_skel(struct execve_bpf* skel,
-                              const struct bpf_opts* opts) {
+                             const struct bpf_opts* opts) {
   if (!skel) return 0;
   bpf_program_set_autoload_sys(skel, execve);
   bpf_program_set_autoload_sys(skel, execveat);
@@ -292,6 +295,7 @@ int set_autoload_delete_module_skel(struct delete_module_bpf* skel,
 /* Loads & verifies BPF programs. */
 int bpf_load(struct bpf* bpf, const struct bpf_opts* opts) {
   if (set_autoload_file_skel(bpf->file_skel, opts) ||
+      set_autoload_mmap_skel(bpf->mmap_skel, opts) ||
       set_autoload_execve_skel(bpf->execve_skel, opts) ||
       set_autoload_process_skel(bpf->process_skel, opts) ||
       set_autoload_sock_skel(bpf->sock_skel, opts) ||
@@ -306,6 +310,7 @@ int bpf_load(struct bpf* bpf, const struct bpf_opts* opts) {
 
 /* Attach tracepoint handler. */
 int bpf_attach(struct bpf* bpf) {
+  if (bpf->mmap_skel && mmap_bpf__attach(bpf->mmap_skel)) goto err;
   if (bpf->execve_skel && execve_bpf__attach(bpf->execve_skel)) goto err;
   if (bpf->process_skel && process_bpf__attach(bpf->process_skel)) goto err;
   if (bpf->file_skel && file_bpf__attach(bpf->file_skel)) goto err;
@@ -349,7 +354,7 @@ int perf_buffer_add(struct list_head* list, int map_fd, size_t page_cnt,
   return 0;
 }
 
-#define map_buffer_new_or_add(buffer, skel, event, data_ptr)          \
+#define map_buffer_new_or_add(buffer, skel, event, data_ptr)            \
   ring_buffer_new_or_add(buffer, bpf_map__fd((skel)->maps.event##_buf), \
                          event##_cb, data_ptr, NULL)
 
@@ -374,6 +379,14 @@ void perf_buffer_delete(struct list_head* list) {
 
 #define map_buffer_free(map_buffer) \
   if (map_buffer) ring_buffer__free(map_buffer)
+
+int create_mmap_map_buffers(struct bpf* bpf, struct bpf_opts* opts) {
+  if (!bpf->mmap_skel) return 0;
+  if (map_buffer_new_or_add(&bpf->map_buffer, bpf->mmap_skel, sys_mmap,
+                            &opts->sys_mmap_log))
+    return 1;
+  return 0;
+}
 
 int create_execve_map_buffers(struct bpf* bpf) {
   if (!bpf->execve_skel) return 0;
@@ -427,9 +440,8 @@ int create_file_map_buffers(struct bpf* bpf, struct bpf_opts* opts) {
   const pid_t pid = getpid();
   const int index = 0;
   if ((WRITE_MAP_ENABLED(opts) || READ_MAP_ENABLED(opts)) &&
-      bpf_map__update_elem(bpf->file_skel->maps.system_logger_pid_array,
-                           &index, sizeof(index), &pid, sizeof(pid),
-                           BPF_ANY) < 0)
+      bpf_map__update_elem(bpf->file_skel->maps.system_logger_pid_array, &index,
+                           sizeof(index), &pid, sizeof(pid), BPF_ANY) < 0)
     goto err;
   return 0;
 err:
@@ -439,6 +451,7 @@ err:
 /* Create ring buffers. */
 int create_map_buffers(struct bpf* bpf, struct bpf_opts* opts) {
   bpf->map_buffer = NULL;
+  if (create_mmap_map_buffers(bpf, opts)) goto err;
   if (create_execve_map_buffers(bpf)) goto err;
   if (create_process_map_buffers(bpf, opts)) goto err;
   if (create_file_map_buffers(bpf, opts)) goto err;
@@ -500,6 +513,7 @@ clean:
 
 /* Destroy BPF application. */
 void bpf_delete(struct bpf* bpf) {
+  if (bpf->mmap_skel) mmap_bpf__destroy(bpf->mmap_skel);
   if (bpf->execve_skel) execve_bpf__destroy(bpf->execve_skel);
   if (bpf->process_skel) process_bpf__destroy(bpf->process_skel);
   if (bpf->file_skel) file_bpf__destroy(bpf->file_skel);

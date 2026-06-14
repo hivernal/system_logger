@@ -32,6 +32,8 @@
   "\t\t\t\tsys_setfsuid, sys_setfsgid events.\n"                               \
   "--sys_execve_log=FILE\t\tSets the log file for the sys_execve,\n"           \
   "\t\t\t\tsys_execveat events.\n"                                             \
+  "--sys_mmap_log=FILE\t\tSets the log file for the sys_mmap\n"                \
+  "\t\t\t\tevents.\n"                                                          \
   "--sys_clone_log=FILE\t\tSets the log file for the sys_clone, sys_clone3\n"  \
   "\t\t\t\tevents.\n"                                                          \
   "--sched_process_exit_log=FILE\tSets the log file for the\n"                 \
@@ -50,6 +52,7 @@
   "sys_connect, sys_accept, sys_accept4, sys_listen.\n"                        \
   "sys_setuid, sys_setgid, sys_setreuid.\n"                                    \
   "sys_setregid, sys_setresuid, sys_setresgid, sys_setfsuid, sys_setfsgid.\n"  \
+  "sys_mmap.\n"                                                                \
   "sys_execve, sys_execveat.\n"                                                \
   "sys_clone, sys_clone3.\n"                                                   \
   "sched_process_exit.\n"                                                      \
@@ -62,6 +65,7 @@
 
 #define HASH_ALG "SHA256"
 #define LOG_DIR "/var/log/system_logger/"
+#define SYS_MMAP_LOG "/var/log/system_logger/sys_mmap.log"
 #define SYS_EXECVE_LOG "/var/log/system_logger/sys_execve.log"
 #define SYS_CLONE_LOG "/var/log/system_logger/sys_clone.log"
 #define SCHED_PROCESS_EXIT_LOG "/var/log/system_logger/sched_process_exit.log"
@@ -126,6 +130,8 @@ void signal_callback(int sig __attribute__((unused))) { bpf_is_run = 0; }
                           .sys_setresgid_enable = 1,                        \
                           .sys_setfsuid_enable = 1,                         \
                           .sys_setfsgid_enable = 1,                         \
+                          .sys_mmap_log = SYS_MMAP_LOG,                     \
+                          .sys_mmap_enable = 1,                             \
                           .sys_execve_log = SYS_EXECVE_LOG,                 \
                           .sys_execve_enable = 1,                           \
                           .sys_execveat_enable = 1,                         \
@@ -193,6 +199,9 @@ enum {
   sys_setresgid_enable_val,
   sys_setfsuid_enable_val,
   sys_setfsgid_enable_val,
+
+  sys_mmap_log_val,
+  sys_mmap_enable_val,
 
   sys_execve_log_val,
   sys_execve_enable_val,
@@ -270,6 +279,9 @@ static const struct option longopts[] = {
     LONGOPT(sys_setfsuid_enable),
     LONGOPT(sys_setfsgid_enable),
 
+    LONGOPT(sys_mmap_log),
+    LONGOPT(sys_mmap_enable),
+
     LONGOPT(sys_execve_log),
     LONGOPT(sys_execve_enable),
     LONGOPT(sys_execveat_enable),
@@ -318,6 +330,7 @@ int main(int argc, char* argv[]) {
     ELSE_IF_LOG(type, sys_rename_log, bpf_opts);
     ELSE_IF_LOG(type, sys_sock_log, bpf_opts);
     ELSE_IF_LOG(type, sys_setid_log, bpf_opts);
+    ELSE_IF_LOG(type, sys_mmap_log, bpf_opts);
     ELSE_IF_LOG(type, sys_execve_log, bpf_opts);
     ELSE_IF_LOG(type, sys_clone_log, bpf_opts);
     ELSE_IF_LOG(type, sched_process_exit_log, bpf_opts);
@@ -358,6 +371,7 @@ int main(int argc, char* argv[]) {
     ELSE_IF_ENABLE(type, sys_setresgid_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_setfsuid_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_setfsgid_enable, bpf_opts);
+    ELSE_IF_ENABLE(type, sys_mmap_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_execve_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_execveat_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_clone_enable, bpf_opts);

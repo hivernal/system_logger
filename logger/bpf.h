@@ -8,6 +8,9 @@ struct bpf;
 struct bpf_opts {
   const char* log_dir;
 
+  const char* sys_mmap_log;
+  int sys_mmap_enable;
+
   const char* sys_execve_log;
   int sys_execve_enable;
   int sys_execveat_enable;

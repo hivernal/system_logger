@@ -12,6 +12,17 @@
 
 #define UNUSED __attribute__((unused))
 
+static inline void fprint_task_caps(FILE* file, const struct task_caps* caps) {
+  fprintf(file,
+          "capinh: 0x%llx\n"
+          "capprm: 0x%llx\n"
+          "capeff: 0x%llx\n"
+          "capbnd: 0x%llx\n"
+          "capamb: 0x%llx\n",
+          caps->inheritable, caps->permitted, caps->effective, caps->bset,
+          caps->ambient);
+}
+
 /* Prints substring to the file. */
 static inline void fprint_substr(FILE* file, const char* start,
                                  const char* end) {
@@ -64,9 +75,8 @@ static inline void fprint_task_namespaces(FILE* file,
           uts_ns->inum, uts_ns->sysname, uts_ns->nodename, uts_ns->release,
           uts_ns->version, uts_ns->machine);
   const struct task_user_ns* user_ns = &ns->user_ns;
-  fprintf(file,
-          "user_ns_id: %u\nuser_ns_level: %u\n",
-          user_ns->inum, user_ns->level);
+  fprintf(file, "user_ns_id: %u\nuser_ns_level: %u\n", user_ns->inum,
+          user_ns->level);
 }
 
 /* Prints task struct to the file. */
@@ -76,6 +86,7 @@ static inline void fprint_task(FILE* file, const struct task* task) {
           "%s\nsessionid: %u\n",
           task->time_nsec, task->pid, task->ppid, task->tgid, task->comm,
           task->sessionid);
+  fprint_task_caps(file, &task->caps);
   fprint_task_cred(file, task);
   fprint_task_mm(file, &task->mm);
   fprint_task_namespaces(file, &task->ns);
@@ -89,6 +100,8 @@ static inline void fprint_hex(FILE* file, const unsigned char* data,
 #define print_task(task) fprint_task(stdout, task)
 #define print_substr(start, end) fprint_substr(stdout, start, end)
 
+/* Prints capabiliies flags separeted by ' '. */
+void check_cap(FILE* file, unsigned long long cap);
 /* Prints filename relative to path_dentries to the file. */
 void fprint_relative_filename(FILE* file, const char* filename,
                               const struct path_dentries* path_dentries);

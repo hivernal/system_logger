@@ -67,26 +67,6 @@ FUNC_INLINE int read_argv(char* dst, const char** src, enum error* errors) {
   return (int)offset;
 }
 
-FUNC_INLINE int fill_task_caps(struct task_caps* caps, enum error* errors) {
-  const struct task_struct* task = (struct task_struct*)bpf_get_current_task();
-  if (!task) {
-    *errors |= EGET_CURRENT_TASK;
-    return FAILURE_CODE;
-  }
-  const struct cred* cred;
-  long ret = bpf_core_read(&cred, sizeof(cred), &task->real_cred);
-  if (ret < 0) {
-    *errors |= ECORE_READ;
-    return FAILURE_CODE;
-  }
-  ret = bpf_core_read(caps, sizeof(*caps), &cred->cap_inheritable);
-  if (ret < 0) {
-    *errors |= ECORE_READ;
-    return FAILURE_CODE;
-  }
-  return SUCCESS_CODE;
-}
-
 FUNC_INLINE int on_sys_enter_execve(int fd, const char* filename,
                                     const char** argv) {
   const int array_index = 0;
@@ -147,8 +127,6 @@ FUNC_INLINE int on_sys_exit_execve(int ret, int event_type) {
     sys_execve->errors |= EFILL_TASK;
   if (read_cwd(&sys_execve->cwd, &sys_execve->errors) == FAILURE_CODE)
     sys_execve->errors |= EREAD_CWD;
-  if (fill_task_caps(&sys_execve->caps, &sys_execve->errors) == FAILURE_CODE)
-    sys_execve->errors |= EFILL_TASK_CAPS;
   sys_execve->ret = ret;
   sys_execve->event_type = event_type;
   sys_execve->filename_type = filename_type;

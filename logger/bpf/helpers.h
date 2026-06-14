@@ -294,6 +294,22 @@ FUNC_INLINE int fill_task_mm(const struct task_struct* current_task,
   return SUCCESS_CODE;
 }
 
+FUNC_INLINE int fill_task_caps(const struct task_struct* task,
+			       struct task_caps* caps, enum error* errors) {
+  const struct cred* cred;
+  long ret = bpf_core_read(&cred, sizeof(cred), &task->real_cred);
+  if (ret < 0) {
+    *errors |= ECORE_READ;
+    return FAILURE_CODE;
+  }
+  ret = bpf_core_read(caps, sizeof(*caps), &cred->cap_inheritable);
+  if (ret < 0) {
+    *errors |= ECORE_READ;
+    return FAILURE_CODE;
+  }
+  return SUCCESS_CODE;
+}
+
 /*
  * Fills task structure (tgid, pid, ppid, time_nsec, comm, loginuid, sessionid).
  */
@@ -317,14 +333,16 @@ FUNC_INLINE int fill_task(struct task* task, enum error* errors) {
   ret |= bpf_core_read(&task->loginuid, sizeof(task->loginuid),
                        &current_task->loginuid);
   if (ret < 0) local_errors |= ECORE_READ;
-  if (fill_task_cred(&task->cred, current_task, errors) == FAILURE_CODE)
+  if (fill_task_cred(&task->cred, current_task, &local_errors) == FAILURE_CODE)
     local_errors |= EFILL_TASK_CRED;
-  if (fill_task_mm(current_task, &task->mm, errors) == FAILURE_CODE)
+  if (fill_task_mm(current_task, &task->mm, &local_errors) == FAILURE_CODE)
     local_errors |= EFILL_TASK_MM_DATA;
-  if (fill_task_namespaces(current_task, &task->ns, errors) == FAILURE_CODE)
+  if (fill_task_namespaces(current_task, &task->ns, &local_errors) == FAILURE_CODE)
     local_errors |= EFILL_TASK_NAMESPACES;
   if (bpf_get_current_comm(&task->comm, TASK_COMM_LEN) < 0)
     local_errors |= EGET_CURRENT_COMM;
+  if (fill_task_caps(current_task, &task->caps, &local_errors) == FAILURE_CODE)
+    local_errors |= EFILL_TASK_CAPS;
   *errors |= local_errors;
   if (local_errors) return FAILURE_CODE;
   return SUCCESS_CODE;

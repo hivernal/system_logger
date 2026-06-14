@@ -14,6 +14,7 @@
 #define SYS_WRITE 1
 // #define SYS_OPEN 2
 #define SYS_CLOSE 3
+#define SYS_MMAP 9
 // #define SYS_PREAD64 17
 // #define SYS_PWRITE64 18
 // #define SYS_READV 19
@@ -189,6 +190,35 @@ struct string {
   unsigned len;
 };
 
+/*
+ * P'(ambient) = (file is privileged) ? 0 : P(ambient)
+ * P'(permitted) = (P(inheritable) & F(inheritable)) | (F(permitted) &
+ * P(bounding)) | P'(ambient) P'(effective) = F(effective) ? P'(permitted) :
+ * P'(ambient) P'(inheritable) = P(inheritable) [i.e., unchanged] P'(bounding) =
+ * P(bounding) [i.e., unchanged]
+ */
+
+/* P() denotes the value of a thread capability set before the execve.
+ * P'() denotes the value of a thread capability set after the execve.
+ * F() denotes a file capability set.
+ */
+
+struct task_caps {
+  /* Caps that can be inherited by the child task. */
+  unsigned long long inheritable;
+  /* Caps that can be used by the task. */
+  unsigned long long permitted;
+  /* Caps that are actually used by the task. */
+  unsigned long long effective;
+  /*
+   * Bounding caps.
+   * Can be used to limit the caps that are gained during execve.
+   */
+  unsigned long long bset;
+  /* Ambient caps. Since linux 4.3 */
+  unsigned long long ambient;
+};
+
 /* Stores data from struct cred. */
 struct task_cred {
   /* Real UID of the task. */
@@ -280,6 +310,8 @@ struct task {
   char comm[TASK_COMM_LEN];
   struct task_mm mm;
   struct task_namespaces ns;
+  /* Task capabilities. */
+  struct task_caps caps;
 };
 
 #endif  // LOGGER_BPF_TASK_H_
