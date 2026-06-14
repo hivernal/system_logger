@@ -52,6 +52,7 @@ struct bpf_opts {
   int sys_connect_enable;
   int sys_accept_enable;
   int sys_accept4_enable;
+  int sys_listen_enable;
 
   const char* sys_setid_log;
   int sys_setuid_enable;

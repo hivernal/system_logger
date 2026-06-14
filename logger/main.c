@@ -26,7 +26,7 @@
   "--sys_rename_log=FILE\t\tSets the log file for the sys_rename,\n"           \
   "\t\t\t\tsys_renameat, sys_renameat2 events.\n"                              \
   "--sys_sock_log=FILE\t\tSets the log file for the sys_connect, sys_accept\n" \
-  "\t\t\t\tsys_accept4 events.\n"                                              \
+  "\t\t\t\tsys_accept4, sys_listen events.\n"                                  \
   "--sys_setid_log=FILE\t\tSets the log file for the sys_setuid,sys_setgid,\n" \
   "\t\t\t\tsys_setreuid, sys_setregid, sys_setresuid, sys_setresgid,\n"        \
   "\t\t\t\tsys_setfsuid, sys_setfsgid events.\n"                               \
@@ -47,7 +47,7 @@
   "sys_chmod, sys_fchmod, sys_fchmodat, sys_fchmodat2.\n"                      \
   "sys_chown, sys_fchown, sys_lchown, sys_fchownat.\n"                         \
   "sys_rename, sys_renameat, sys_renameat2.\n"                                 \
-  "sys_connect, sys_accept, sys_accept4.\n"                                    \
+  "sys_connect, sys_accept, sys_accept4, sys_listen.\n"                        \
   "sys_setuid, sys_setgid, sys_setreuid.\n"                                    \
   "sys_setregid, sys_setresuid, sys_setresgid, sys_setfsuid, sys_setfsgid.\n"  \
   "sys_execve, sys_execveat.\n"                                                \
@@ -114,6 +114,7 @@ void signal_callback(int sig __attribute__((unused))) { bpf_is_run = 0; }
                           .sys_renameat2_enable = 1,                        \
                           .sys_sock_log = SYS_SOCK_LOG,                     \
                           .sys_connect_enable = 1,                          \
+                          .sys_listen_enable = 1,                           \
                           .sys_accept_enable = 1,                           \
                           .sys_accept4_enable = 1,                          \
                           .sys_setid_log = SYS_SETID_LOG,                   \
@@ -181,6 +182,7 @@ enum {
   sys_connect_enable_val,
   sys_accept_enable_val,
   sys_accept4_enable_val,
+  sys_listen_enable_val,
 
   sys_setid_log_val,
   sys_setuid_enable_val,
@@ -256,6 +258,7 @@ static const struct option longopts[] = {
     LONGOPT(sys_connect_enable),
     LONGOPT(sys_accept_enable),
     LONGOPT(sys_accept4_enable),
+    LONGOPT(sys_listen_enable),
 
     LONGOPT(sys_setid_log),
     LONGOPT(sys_setuid_enable),
@@ -346,6 +349,7 @@ int main(int argc, char* argv[]) {
     ELSE_IF_ENABLE(type, sys_connect_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_accept_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_accept4_enable, bpf_opts);
+    ELSE_IF_ENABLE(type, sys_listen_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_setuid_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_setgid_enable, bpf_opts);
     ELSE_IF_ENABLE(type, sys_setreuid_enable, bpf_opts);

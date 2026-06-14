@@ -21,27 +21,45 @@ struct sys_sock {
 /* Struct for the AF_INET6 connect, accept syscalls. */
 struct sys_sock6 {
   struct sys_sock sock;
-  /* Destination ipv6 address. */
-  uint8_t daddr[16];
   /* Source ipv6 address. */
   uint8_t saddr[16];
-  /* Destination port. */
-  uint16_t dport;
   /* Source port. */
   uint16_t sport;
+  /* Destination ipv6 address. */
+  uint8_t daddr[16];
+  /* Destination port. */
+  uint16_t dport;
+};
+
+/* Struct for the AF_INET6 listen syscall. */
+struct sys_single_sock6 {
+  struct sys_sock sock;
+  /* ipv6 address. */
+  uint8_t addr[16];
+  /* port. */
+  uint16_t port;
 };
 
 /* Struct for the AF_INET4 connect, accept syscalls. */
 struct sys_sock4 {
   struct sys_sock sock;
-  /* Destination ipv4 address. */
-  uint32_t daddr;
   /* Source ipv4 address. */
   uint32_t saddr;
-  /* Destination port. */
-  uint16_t dport;
   /* Source port. */
   uint16_t sport;
+  /* Destination ipv4 address. */
+  uint32_t daddr;
+  /* Destination port. */
+  uint16_t dport;
+};
+
+/* Struct for the AF_INET4 listen syscall. */
+struct sys_single_sock4 {
+  struct sys_sock sock;
+  /* ipv4 address. */
+  uint32_t addr;
+  /* port. */
+  uint16_t port;
 };
 
 #endif  // LOGGER_BPF_SOCK_H_

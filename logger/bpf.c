@@ -56,7 +56,7 @@ struct bpf {
    * sys_setresgid, sys_setfsuid, sys_setfsgid skeleton object.
    */
   struct setid_bpf* setid_skel;
-  /* sys_connect, sys_accept, sys_accept4 skeleton object. */
+  /* sys_connect, sys_accept, sys_accept4, sys_listen, sys_close skeleton object. */
   struct sock_bpf* sock_skel;
   /* sys_init_module, sys_finit_module skeleton object. */
   struct init_module_bpf* init_module_skel;
@@ -99,7 +99,7 @@ struct bpf {
 
 #define SOCK_SKEL_DISABLED(opts)                                \
   (!(opts)->sys_connect_enable && !(opts)->sys_accept_enable && \
-   !(opts)->sys_accept4_enable)
+   !(opts)->sys_accept4_enable && !(opts)->sys_listen_enable)
 
 #define INIT_MODULE_SKEL_DISABLED(opts) \
   (!(opts)->sys_init_module_enable && !(opts)->sys_finit_module_enable)
@@ -236,6 +236,7 @@ int set_autoload_process_skel(struct process_bpf* skel,
 int set_autoload_sock_skel(struct sock_bpf* skel, const struct bpf_opts* opts) {
   if (!skel) return 0;
   bpf_program_set_autoload_sys(skel, connect);
+  bpf_program_set_autoload_sys(skel, listen);
   bpf_program__set_autoload(skel->progs.tracepoint__syscalls__sys_exit_accept,
                             opts->sys_accept_enable);
   bpf_program__set_autoload(skel->progs.tracepoint__syscalls__sys_exit_accept4,

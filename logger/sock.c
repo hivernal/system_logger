@@ -24,19 +24,31 @@ void fprint_sys_sock(FILE* file, const struct sys_sock* sys_sock) {
     fprintf(file, "event: sys_accept\nsaddr: ");
   } else if (sys_sock->event_type == SYS_ACCEPT4) {
     fprintf(file, "event: sys_accept4\nsaddr: ");
+  } else if (sys_sock->event_type == SYS_LISTEN) {
+    fprintf(file, "event: sys_listen\nsaddr: ");
+    /*
+  } else if (sys_sock->event_type == SYS_CLOSE) {
+    fprintf(file, "event: sys_close\nsaddr: ");
+  } else if (sys_sock->event_type == SYS_SHUTDOWN) {
+    fprintf(file, "event: sys_shutdown\nsaddr: ");
+    */
   } else {
     return;
   }
   if (sys_sock->family == AF_INET) {
     struct sys_sock4* sys_sock4 = (struct sys_sock4*)sys_sock;
     fprint_ip4(file, sys_sock4->saddr, sys_sock4->sport);
-    fprintf(file, "\ndaddr: ");
-    fprint_ip4(file, sys_sock4->daddr, ntohs(sys_sock4->dport));
+    if (sys_sock->event_type != SYS_LISTEN) {
+      fprintf(file, "\ndaddr: ");
+      fprint_ip4(file, sys_sock4->daddr, ntohs(sys_sock4->dport));
+    }
   } else if (sys_sock->family == AF_INET6) {
     struct sys_sock6* sys_sock6 = (struct sys_sock6*)sys_sock;
     fprint_ip6(file, sys_sock6->saddr, sys_sock6->sport);
-    fprintf(file, "\ndaddr: ");
-    fprint_ip6(file, sys_sock6->daddr, ntohs(sys_sock6->dport));
+    if (sys_sock->event_type != SYS_LISTEN) {
+      fprintf(file, "\ndaddr: ");
+      fprint_ip6(file, sys_sock6->daddr, ntohs(sys_sock6->dport));
+    }
   } else {
     return;
   }
