@@ -1,23 +1,25 @@
 #include "logger/bpf.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#include "logger/mmap.skel.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
 #include "logger/execve.skel.h"
+#include "logger/mmap.skel.h"
+#include "logger/usb_set_device_state.skel.h"
 #include "logger/process.skel.h"
 #include "logger/file.skel.h"
 #include "logger/setid.skel.h"
 #include "logger/sock.skel.h"
 #include "logger/init_module.skel.h"
 #include "logger/delete_module.skel.h"
-#pragma GCC diagnostic pop
+#pragma clang diagnostic pop
 
 #include <bpf/libbpf.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "logger/mmap.h"
 #include "logger/execve.h"
+#include "logger/mmap.h"
+#include "logger/usb_set_device_state.h"
 #include "logger/process.h"
 #include "logger/file.h"
 #include "logger/setid.h"
@@ -53,6 +55,8 @@ struct bpf {
   struct execve_bpf* execve_skel;
   /* sys_mmap skeleton object. */
   struct mmap_bpf* mmap_skel;
+  /* kprobe_usb_set_device_state skeleton object. */
+  struct usb_set_device_state_bpf* usb_set_device_state_skel;
   /*
    * sys_write, sys_read, sys_unlink, sys_unlinkat, sys_chmod, sys_fchmodat,
    * sys_fchmodat2, sys_fchmod, sys_chown, sys_fchown, sys_fchownat, sys_rename,
@@ -148,6 +152,9 @@ struct bpf {
 
 /* Opens BPF application. */
 int bpf_open(struct bpf* bpf, const struct bpf_opts* opts) {
+  if (!(bpf->usb_set_device_state_skel = usb_set_device_state_bpf__open()))
+    goto err;
+
   if (MMAP_SKEL_DISABLED(opts)) bpf->mmap_skel = NULL;
   else if (!(bpf->mmap_skel = mmap_bpf__open())) goto err;
 
@@ -240,6 +247,13 @@ int set_autoload_execve_skel(struct execve_bpf* skel,
   return execve_bpf__load(skel);
 }
 
+int set_autoload_usb_set_device_state_skel(struct usb_set_device_state_bpf* skel,
+					   const struct bpf_opts* opts UNUSED) {
+  if (!skel) return 0;
+  bpf_program__set_autoload(skel->progs.usb_set_device_state, 1);
+  return usb_set_device_state_bpf__load(skel);
+}
+
 int set_autoload_process_skel(struct process_bpf* skel,
                               const struct bpf_opts* opts) {
   if (!skel) return 0;
@@ -297,6 +311,7 @@ int bpf_load(struct bpf* bpf, const struct bpf_opts* opts) {
   if (set_autoload_file_skel(bpf->file_skel, opts) ||
       set_autoload_mmap_skel(bpf->mmap_skel, opts) ||
       set_autoload_execve_skel(bpf->execve_skel, opts) ||
+      set_autoload_usb_set_device_state_skel(bpf->usb_set_device_state_skel, opts) ||
       set_autoload_process_skel(bpf->process_skel, opts) ||
       set_autoload_sock_skel(bpf->sock_skel, opts) ||
       set_autoload_setid_skel(bpf->setid_skel, opts) ||
@@ -312,6 +327,8 @@ int bpf_load(struct bpf* bpf, const struct bpf_opts* opts) {
 int bpf_attach(struct bpf* bpf) {
   if (bpf->mmap_skel && mmap_bpf__attach(bpf->mmap_skel)) goto err;
   if (bpf->execve_skel && execve_bpf__attach(bpf->execve_skel)) goto err;
+  if (bpf->usb_set_device_state_skel &&
+      usb_set_device_state_bpf__attach(bpf->usb_set_device_state_skel)) goto err;
   if (bpf->process_skel && process_bpf__attach(bpf->process_skel)) goto err;
   if (bpf->file_skel && file_bpf__attach(bpf->file_skel)) goto err;
   if (bpf->sock_skel && sock_bpf__attach(bpf->sock_skel)) goto err;
@@ -396,6 +413,14 @@ int create_execve_map_buffers(struct bpf* bpf) {
   return 0;
 }
 
+int create_usb_set_device_state_map_buffers(struct bpf* bpf) {
+  if (!bpf->usb_set_device_state_skel) return 0;
+  if (map_buffer_new_or_add(&bpf->map_buffer, bpf->usb_set_device_state_skel,
+			    kprobe_usb_set_device_state, NULL))
+    return 1;
+  return 0;
+}
+
 int create_process_map_buffers(struct bpf* bpf, struct bpf_opts* opts) {
   if (!bpf->process_skel) return 0;
   if (CLONE_MAP_ENABLED(opts) &&
@@ -453,6 +478,7 @@ int create_map_buffers(struct bpf* bpf, struct bpf_opts* opts) {
   bpf->map_buffer = NULL;
   if (create_mmap_map_buffers(bpf, opts)) goto err;
   if (create_execve_map_buffers(bpf)) goto err;
+  if (create_usb_set_device_state_map_buffers(bpf)) goto err;
   if (create_process_map_buffers(bpf, opts)) goto err;
   if (create_file_map_buffers(bpf, opts)) goto err;
   if (bpf->setid_skel &&
@@ -515,6 +541,7 @@ clean:
 void bpf_delete(struct bpf* bpf) {
   if (bpf->mmap_skel) mmap_bpf__destroy(bpf->mmap_skel);
   if (bpf->execve_skel) execve_bpf__destroy(bpf->execve_skel);
+  if (bpf->usb_set_device_state_skel) usb_set_device_state_bpf__destroy(bpf->usb_set_device_state_skel);
   if (bpf->process_skel) process_bpf__destroy(bpf->process_skel);
   if (bpf->file_skel) file_bpf__destroy(bpf->file_skel);
   if (bpf->setid_skel) setid_bpf__destroy(bpf->setid_skel);
